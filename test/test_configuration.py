@@ -350,6 +350,16 @@ export function apply(profile, phdr) {{
         with service_error("Error while applying policy: InternalError: out of memory"):
             client.submit_claim(signed_claimset)
 
+    def test_policy_stack_overflow(
+        self, client: Client, configure_service, signed_claimset
+    ):
+        policy_script = "export function apply() { return apply(); }"
+        configure_service({"policy": {"policy_script": policy_script}})
+        with service_error(
+            "Error while applying policy: InternalError: stack overflow"
+        ):
+            client.submit_claim(signed_claimset)
+
 
 def test_service_identifier(
     client: Client,
