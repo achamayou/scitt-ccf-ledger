@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 
 import base64
+import time
 
 import httpx
 import pycose
@@ -314,6 +315,39 @@ export function apply(profile, phdr) {{
         proposal = configure_service({"policy": {"policy_script": script}})
 
         with service_error("Invalid policy module"):
+            client.submit_claim(signed_claimset)
+
+    def test_policy_timeout(self, client: Client, configure_service, signed_claimset):
+        configure_service(
+            {
+                "policy": {
+                    "policy_script": "export function apply() { while (true) {}; }"
+                }
+            }
+        )
+
+        start = time.time()
+        with service_error("Error while applying policy: InternalError: interrupted"):
+            client.submit_claim(signed_claimset)
+        delay = time.time() - start
+        # The policy should be given at least 1 second to run.
+        assert delay > 1
+        # But not much more than that. Conservative comparison to avoid flakiness in CI.
+        assert delay < 2
+
+    def test_policy_out_of_memory(
+        self, client: Client, configure_service, signed_claimset
+    ):
+        def policy_script_allocating_mb(mbs):
+            return f"export function apply() {{ const buffer = new ArrayBuffer({mbs} * 1024 * 1024); return true; }}"
+
+        configure_service({"policy": {"policy_script": policy_script_allocating_mb(9)}})
+        client.submit_claim(signed_claimset)
+
+        configure_service(
+            {"policy": {"policy_script": policy_script_allocating_mb(11)}}
+        )
+        with service_error("Error while applying policy: InternalError: out of memory"):
             client.submit_claim(signed_claimset)
 
 
