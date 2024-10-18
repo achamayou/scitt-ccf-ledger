@@ -316,6 +316,12 @@ namespace scitt
           measurement);
       }
 
+      // TODO: this needs changing to be the whole input Signed Statement
+      // see https://datatracker.ietf.org/doc/draft-ietf-scitt-architecture/
+      // Section 3: "...Receipts demonstrate inclusion of Signed Statements"
+      // Section 3: "...the second Receipt will be over the first Receipt in the unprotected header"
+      // ctx.rpc_ctx->set_claims_digest( sha256(body) );
+
       // Compute the hash of the to-be-signed countersigning structure
       // and set it as CCF transaction claim for use in receipt validation.
       SCITT_DEBUG("Add countersignature as CCF application claim for the tx");
@@ -605,6 +611,49 @@ namespace scitt
         HTTP_GET,
         scitt::historical::adapter(
           get_entry_receipt, state_cache, is_tx_committed),
+        authn_policy)
+        .set_forwarding_required(ccf::endpoints::ForwardingRequired::Never)
+        .install();
+
+      static constexpr auto get_entry_statement_path = "/entries/{txid}/statement";
+      auto get_entry_statement = [this](
+                                 EndpointContext& ctx,
+                                 ccf::historical::StatePtr historical_state) {
+        SCITT_DEBUG("Get transaction historical state");
+        auto historical_tx = historical_state->store->create_read_only_tx();
+
+        auto entries = historical_tx.template ro<EntryTable>(ENTRY_TABLE);
+        auto entry = entries->get();
+        if (!entry.has_value())
+        {
+          throw BadRequestError(
+            errors::InvalidInput,
+            fmt::format(
+              "Transaction ID {} does not correspond to a submission.",
+              historical_state->transaction_id.to_str()));
+        }
+        // TODO:
+        // - Split entry into tag, phdr, udhr, payload and signature
+        // - Grab CBOR merkle proot
+        auto proof = ccf::describe_merkle_proof_v1(*historical_state->receipt);
+        // - Grab COSE signature from historical_state->receipt: MISSING API, need 6.0.0-dev3
+        // - Split COSE signature into tag, phdr, udhr, payload and signature
+        // - insert merkle proof into COSE signature's uhdr at 396
+        // - Re-serialise COSE signature
+        // - Append COSE signature in entry's uhdr at 394
+        // - Re-serialise entry
+        // - Return entry
+
+        ctx.rpc_ctx->set_response_body(entry.value());
+        ctx.rpc_ctx->set_response_header(
+          ccf::http::headers::CONTENT_TYPE, "application/cose");
+      };
+
+      make_endpoint(
+        get_entry_statement_path,
+        HTTP_GET,
+        scitt::historical::adapter(
+          get_entry_statement, state_cache, is_tx_committed),
         authn_policy)
         .set_forwarding_required(ccf::endpoints::ForwardingRequired::Never)
         .install();
