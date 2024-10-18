@@ -316,24 +316,21 @@ namespace scitt
           measurement);
       }
 
-      // TODO: this needs changing to be the whole input Signed Statement
+      // The data-hash in the CCF merkle tree is that of the Signed Statement
       // see https://datatracker.ietf.org/doc/draft-ietf-scitt-architecture/
       // Section 3: "...Receipts demonstrate inclusion of Signed Statements"
-      // Section 3: "...the second Receipt will be over the first Receipt in the unprotected header"
-      // ctx.rpc_ctx->set_claims_digest( sha256(body) );
-
-      // Compute the hash of the to-be-signed countersigning structure
-      // and set it as CCF transaction claim for use in receipt validation.
-      SCITT_DEBUG("Add countersignature as CCF application claim for the tx");
-      auto claims_digest =
-        cose::create_countersign_tbs_hash(body, sign_protected);
-      ctx.rpc_ctx->set_claims_digest(std::move(claims_digest));
+      // Section 3: "...the second Receipt will be over the first Receipt in the
+      // unprotected header"
+      SCITT_DEBUG(
+        "Add digest of Signed Statement as CCF application claim for the tx");
+      ctx.rpc_ctx->set_claims_digest(ccf::ClaimsDigest::Digest(body));
 
       // Store the original COSE_Sign1 message in the KV.
       SCITT_DEBUG("Store submitted claim in KV store");
       auto entry_table = ctx.tx.template rw<EntryTable>(ENTRY_TABLE);
       entry_table->put(body);
 
+      // TODO: this duplication is not required
       // Store the protected headers in a separate table, so the
       // receipt can be reconstructed.
       SCITT_DEBUG("Store claim protected headers in KV store");
@@ -615,10 +612,11 @@ namespace scitt
         .set_forwarding_required(ccf::endpoints::ForwardingRequired::Never)
         .install();
 
-      static constexpr auto get_entry_statement_path = "/entries/{txid}/statement";
+      static constexpr auto get_entry_statement_path =
+        "/entries/{txid}/statement";
       auto get_entry_statement = [this](
-                                 EndpointContext& ctx,
-                                 ccf::historical::StatePtr historical_state) {
+                                   EndpointContext& ctx,
+                                   ccf::historical::StatePtr historical_state) {
         SCITT_DEBUG("Get transaction historical state");
         auto historical_tx = historical_state->store->create_read_only_tx();
 
@@ -636,7 +634,8 @@ namespace scitt
         // - Split entry into tag, phdr, udhr, payload and signature
         // - Grab CBOR merkle proot
         auto proof = ccf::describe_merkle_proof_v1(*historical_state->receipt);
-        // - Grab COSE signature from historical_state->receipt: MISSING API, need 6.0.0-dev3
+        // - Grab COSE signature from historical_state->receipt: MISSING API,
+        // need 6.0.0-dev3
         // - Split COSE signature into tag, phdr, udhr, payload and signature
         // - insert merkle proof into COSE signature's uhdr at 396
         // - Re-serialise COSE signature
