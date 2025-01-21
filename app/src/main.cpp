@@ -183,7 +183,7 @@ namespace scitt
       return std::nullopt;
     }
 
-    ccf::endpoints::Endpoint make_endpoint(
+    [[maybe_unused]] ccf::endpoints::Endpoint make_endpoint(
       const std::string& method,
       ccf::RESTVerb verb,
       const ccf::endpoints::EndpointFunction& f,

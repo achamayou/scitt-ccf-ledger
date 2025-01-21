@@ -11,6 +11,8 @@
 #include <ccf/js/common_context.h>
 #include <string>
 
+#include <rego/rego.hh>
+
 namespace scitt
 {
   using PolicyScript = std::string;
@@ -262,5 +264,24 @@ namespace scitt
     const cose::ProtectedHeader& phdr)
   {
     return js::apply_js_policy(script, policy_name, claim_profile, phdr);
+  }
+
+  static inline std::optional<std::string> check_for_policy_violations_rego(
+    const PolicyScript& script,
+    const std::string& policy_name,
+    SignedStatementProfile claim_profile,
+    const cose::ProtectedHeader& phdr)
+  {
+    (void) policy_name;
+    (void) claim_profile;
+    (void) phdr;
+
+    nlohmann::json rego_input;
+    rego_input["profile"] = claim_profile;
+    // TODO: serialise protected header to JSON
+
+    rego::Interpreter interpreter;
+    interpreter.set_input_term(rego_input.dump());
+    return interpreter.query(script);
   }
 }

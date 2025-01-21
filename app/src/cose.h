@@ -719,7 +719,7 @@ namespace scitt::cose
    * Beyond the basic verification of key usage and the signature
    * itself, no particular validation of the message is done.
    */
-  static void verify(
+  [[maybe_unused]] static void verify(
     const std::vector<uint8_t>& cose_sign1,
     const PublicKey& key,
     bool allow_unknown_crit = false)
@@ -782,7 +782,7 @@ namespace scitt::cose
     }
   }
 
-  static std::vector<uint8_t> embed_receipt(
+  [[maybe_unused]] static std::vector<uint8_t> embed_receipt(
     const std::vector<uint8_t>& cose_sign1, const std::vector<uint8_t>& receipt)
   {
     // t_cose doesn't support modifying the unprotected header yet.
