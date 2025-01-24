@@ -37,13 +37,24 @@ set(CMAKE_GENERATED_COMMENT
 )
 configure_file(src/generated/constants.h.in src/generated/constants.h @ONLY)
 
+set(TRIESTE_USE_SNMALLOC OFF)
+
 FetchContent_Declare(
   regocpp
   GIT_REPOSITORY https://github.com/microsoft/rego-cpp
   GIT_TAG        e64553bd0d56650e1bd1a544d70f261002ac3301
 )
-set(CMAKE_POLICY_DEFAULT_CMP0077 NEW) 
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 FetchContent_MakeAvailable(regocpp)
+
+set_property(TARGET rego PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_property(TARGET yaml PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_property(TARGET json PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+#set_property(TARGET snmalloc-new-override PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+set_property(TARGET re2 PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_property(TARGET date-tz PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 # add CCF dependencies
 # add linking options

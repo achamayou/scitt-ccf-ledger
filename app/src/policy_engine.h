@@ -257,7 +257,7 @@ namespace scitt
   // Returns nullopt for success, else a string describing why the policy was
   // refused. May also throw if given invalid policies, or policy execution
   // throws.
-  static inline std::optional<std::string> check_for_policy_violations(
+  static inline std::optional<std::string> check_for_policy_violations_js(
     const PolicyScript& script,
     const std::string& policy_name,
     SignedStatementProfile claim_profile,
@@ -266,7 +266,7 @@ namespace scitt
     return js::apply_js_policy(script, policy_name, claim_profile, phdr);
   }
 
-  static inline std::optional<std::string> check_for_policy_violations_rego(
+  static inline std::optional<std::string> check_for_policy_violations(
     const PolicyScript& script,
     const std::string& policy_name,
     SignedStatementProfile claim_profile,
@@ -278,6 +278,7 @@ namespace scitt
 
     nlohmann::json rego_input;
     rego_input["profile"] = claim_profile;
+    nlohmann::json protected_header;
     // TODO: serialise protected header to JSON
 
     rego::Interpreter interpreter;

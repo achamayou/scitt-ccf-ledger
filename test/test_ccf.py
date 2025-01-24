@@ -56,6 +56,26 @@ def test_jwks(client: Client):
     svc_jwk = pem_cert_to_ccf_jwk(cert_pem)
     assert svc_jwk == jwks["keys"][0]
 
+def test_one(
+    client: Client, trusted_ca, trust_store
+):
+    """
+    Register a signed statement in the SCITT CCF ledger and verify the resulting transparent statement.
+    """
+    params = {"alg": "ES256", "kty": "ec", "ec_curve": "P-256"}
+    identity = trusted_ca.create_identity(**params)
+
+    signed_statement = crypto.sign_json_statement(identity, {"foo": "bar"})
+    transparent_statement = client.register_signed_statement(
+        signed_statement
+    ).response_bytes
+    verify_transparent_statement(transparent_statement, trust_store, signed_statement)
+
+    dynamic_trust_store = DynamicTrustStore(client.get)
+    verify_transparent_statement(
+        transparent_statement, dynamic_trust_store, signed_statement
+    )
+
 
 @pytest.mark.parametrize(
     "params",
