@@ -122,10 +122,6 @@ if (BUILD_TESTS)
     add_subdirectory(${rapidcheck_SOURCE_DIR} ${rapidcheck_BINARY_DIR} EXCLUDE_FROM_ALL)
   endif()
 
-  # Because CCF libraries are built with libc++,
-  # everything else has to be too.
-  target_compile_options(gtest PUBLIC ${COMPILE_LIBCXX})
-  target_compile_options(rapidcheck PUBLIC ${COMPILE_LIBCXX})
   add_san(gtest)
   add_san(rapidcheck)
 
@@ -141,7 +137,6 @@ if (BUILD_TESTS)
     unit-tests/historical/lru_test.cpp
   )
   add_san(unit_tests)
-  target_compile_options(unit_tests PUBLIC ${COMPILE_LIBCXX})
   target_link_system_libraries(unit_tests PRIVATE
     GTest::gmock
     rapidcheck
