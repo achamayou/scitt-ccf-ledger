@@ -56,9 +56,8 @@ def test_jwks(client: Client):
     svc_jwk = pem_cert_to_ccf_jwk(cert_pem)
     assert svc_jwk == jwks["keys"][0]
 
-def test_one(
-    client: Client, trusted_ca, trust_store
-):
+
+def test_one(client: Client, trusted_ca, trust_store):
     """
     Register a signed statement in the SCITT CCF ledger and verify the resulting transparent statement.
     """

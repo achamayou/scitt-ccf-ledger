@@ -9,9 +9,8 @@
 #include "tracing.h"
 
 #include <ccf/js/common_context.h>
-#include <string>
-
 #include <rego/rego.hh>
+#include <string>
 
 namespace scitt
 {
@@ -266,20 +265,29 @@ namespace scitt
     return js::apply_js_policy(script, policy_name, claim_profile, phdr);
   }
 
-  static inline std::optional<std::string> check_for_policy_violations(
+  using PolicyRego = std::string;
+
+  static inline nlohmann::json rego_input_from_profile_and_protected_header(
+    SignedStatementProfile claim_profile, const cose::ProtectedHeader& phdr)
+  {
+    nlohmann::json rego_input;
+    rego_input["profile"] = claim_profile;
+    nlohmann::json cwt;
+    cwt["iss"] = phdr.cwt_claims.iss;
+    cwt["sub"] = phdr.cwt_claims.sub;
+    cwt["iat"] = phdr.cwt_claims.iat;
+    nlohmann::json protected_header;
+    protected_header["cwt"] = cwt;
+    return rego_input;
+  }
+
+  static inline std::optional<std::string> check_for_policy_violations_rego(
     const PolicyScript& script,
-    const std::string& policy_name,
     SignedStatementProfile claim_profile,
     const cose::ProtectedHeader& phdr)
   {
-    (void) policy_name;
-    (void) claim_profile;
-    (void) phdr;
-
-    nlohmann::json rego_input;
-    rego_input["profile"] = claim_profile;
-    nlohmann::json protected_header;
-    // TODO: serialise protected header to JSON
+    auto rego_input =
+      rego_input_from_profile_and_protected_header(claim_profile, phdr);
 
     rego::Interpreter interpreter;
     interpreter.set_input_term(rego_input.dump());
