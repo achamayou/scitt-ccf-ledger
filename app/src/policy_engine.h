@@ -295,10 +295,16 @@ namespace scitt
         scitt::errors::PolicyError, "Invalid policy module");
     }
 
+    auto qv = interpreter.set_query("data.policy.allow");
+    if (qv != nullptr)
+    {
+      throw BadRequestError(scitt::errors::PolicyError, "Invalid policy query");
+    }
+
     auto end = std::chrono::system_clock::now();
     auto elapsed =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    CCF_APP_INFO("Rego policy compilation took {}us", elapsed.count());
+    CCF_APP_INFO("Rego policy compilation and query setting took {}us", elapsed.count());
     start = std::chrono::system_clock::now();
 
     auto tv = interpreter.set_input_term(rego_input.dump());
@@ -306,18 +312,18 @@ namespace scitt
     {
       throw BadRequestError(scitt::errors::PolicyError, "Invalid policy input");
     }
-    auto qv = interpreter.query("data.policy.allow");
 
+    auto sv = interpreter.output_to_string(interpreter.fast_query());
     end = std::chrono::system_clock::now();
     elapsed =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    CCF_APP_INFO("Rego policy execution took {}us", elapsed.count());
+    CCF_APP_INFO("Rego policy evaluation took {}us", elapsed.count());
 
-    if (qv == "{\"expressions\":[true]}")
+    if (sv == "{\"expressions\":[true]}")
     {
       return std::nullopt;
     }
-    else if (qv == "{\"expressions\":[false]}")
+    else if (sv == "{\"expressions\":[false]}")
     {
       return "Input statement rejected";
     }
@@ -325,7 +331,7 @@ namespace scitt
     {
       throw BadRequestError(
         scitt::errors::PolicyError,
-        fmt::format("Error while applying policy: {}", qv));
+        fmt::format("Error while applying policy: {}", sv));
     }
   }
 }

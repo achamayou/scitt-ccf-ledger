@@ -38,8 +38,8 @@ set(TRIESTE_USE_SNMALLOC OFF)
 
 FetchContent_Declare(
   regocpp
-  GIT_REPOSITORY https://github.com/microsoft/rego-cpp
-  GIT_TAG        5a6b47653fa212de6cafe1f871c6a6511e59f7b5
+  GIT_REPOSITORY https://github.com/matajoh/rego-cpp
+  GIT_TAG        bc1d86e9d0257fef64926a335aaf774b323b6b1a
 )
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 FetchContent_MakeAvailable(regocpp)
