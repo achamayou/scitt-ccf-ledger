@@ -1,15 +1,21 @@
-Transparency Trust Lists
-========================
+# Transparency Trust Lists
 
-# Motivation
+## Motivation
 
 Transparency receipts are only useful at scale if a relying party can decide quickly and reliably whether the Transparency Service (TS) that issued them is one it should trust. Today that requires reaching out to the TS, establishing its authenticity, and fetching its set of trusted signing keys. The key set can be cached, but only effectively in long-lived contexts.
 
 A Transparency Trust List (TTL) simplifies this: it is a signed, portable artifact naming the TS instances a relying party trusts and their respective trusted signing keys, so receipts can be validated offline and deterministically. TTLs unlock portable trust decisions across relying parties without online lookups, and can be distributed through any channel, including out-of-band.
 
-# Schema
+## Refresh Frequency
 
-## Payload
+A TTL should be refreshed when:
+
+1. A TS instance is added to or removed from the list of trusted issuers.
+2. The signing keys of a trusted TS instance are rotated or revoked.
+
+## Schema
+
+### Payload
 
 ```cddl
 ; Definitions imported from RFC 9052 (COSE).
@@ -36,14 +42,27 @@ TransparencyTrustListPayload = {
 }
 ```
 
-## Envelope
+`COSE_KeySet` is used here so that the trusted key material for each
+issuer is in exactly the same shape that a Transparency Service exposes
+under its `/.well-known/scitt-keys` resource, defined in
+[Section 2.1 of draft-ietf-scitt-scrapi](https://datatracker.ietf.org/doc/html/draft-ietf-scitt-scrapi-10#section-2.1)
+("Transparency Service Keys"). That endpoint returns a COSE Key Set
+(per Section 7 of [RFC 9052](https://www.rfc-editor.org/rfc/rfc9052.html))
+serialized as `application/cbor`, and individual keys are resolvable by
+`kid` under
+[Section 2.2 of the same draft](https://datatracker.ietf.org/doc/html/draft-ietf-scitt-scrapi-10#section-2.2)
+(`/.well-known/scitt-keys/{kid_value}`). Reusing the same encoding lets a
+TTL be assembled from, and verified against, the live SCRAPI key
+resources without any transformation.
+
+### Envelope
 
 The Transparency Trust List is a signed `COSE_Sign1` message whose payload is the `TransparencyTrustListPayload` defined above. The protected header carries the content type, a CWT Claims Set ([RFC 9597](https://www.rfc-editor.org/rfc/rfc9597.html)) identifying the TTL issuer and subject, and optionally the signing algorithm, key identifier, and an X.509 certificate chain ([RFC 9360](https://www.rfc-editor.org/rfc/rfc9360.html)).
 
 ```cddl
 ; A signed COSE_Sign1 (Section 4.2 of RFC 9052) carrying the TransparencyTrustListPayload.
 
-TTL_content_type = "application/vnd.transparency-trust-list"
+TTL_content_type = "application/vnd.transparency-trust-list+cose"
 
 ; CWT Claims Set carried in a COSE header per RFC 9597
 ; ("CBOR Web Token (CWT) Claims in COSE Headers"), using the
@@ -79,7 +98,7 @@ TransparencyTrustList = [
 TransparencyTrustList_Tagged = #6.18(TransparencyTrustList)
 ```
 
-# Example Trust List Payload
+## Example Trust List Payload
 
 ```edn
 { / TransparencyTrustListPayload: map of issuer => COSE_KeySet /
@@ -137,11 +156,3 @@ TransparencyTrustList_Tagged = #6.18(TransparencyTrustList)
   ]
 }
 ```
-
-# Refresh Frequency
-
-A TTL should be refreshed when:
-
-1. A TS instance is added to or removed from the list of trusted issuers.
-2. The signing keys of a trusted TS instance are rotated or revoked.
-3. The TTL approaches or has passed any expiration time it carries (e.g. the `exp` CWT claim).
