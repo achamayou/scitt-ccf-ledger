@@ -102,7 +102,7 @@ TransparencyTrustList_Tagged = #6.18(TransparencyTrustList)
 
 ```edn
 { / TransparencyTrustListPayload: map of issuer => COSE_KeySet /
-  "https://esrp-cts-dev.confidential-ledger.azure.com"
+  "esrp-cts-dev.confidential-ledger.azure.com"
       / issuer identifier (TS instance URL) /:
   [ / COSE_KeySet: one or more COSE_Key entries /
     {
@@ -128,7 +128,7 @@ TransparencyTrustList_Tagged = #6.18(TransparencyTrustList)
                   / y coordinate of the public key (48 bytes) /
     }
   ],
-  "https://esrp-cts-ppe.confidential-ledger.azure.com"
+  "esrp-cts-ppe.confidential-ledger.azure.com"
       / issuer identifier (TS instance URL) /:
   [ / COSE_KeySet: one or more COSE_Key entries /
     {
