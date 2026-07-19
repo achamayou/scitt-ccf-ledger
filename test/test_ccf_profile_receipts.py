@@ -13,8 +13,8 @@ from pyscitt.verify import verify_cose_sign1, verify_transparent_statement
 # statement. We re-sign that exact payload with a locally generated test CA (as
 # the other integration tests do) and register it with the ledger, which yields
 # a CCF-profile receipt. The signed statement, transparent statement, receipt
-# and signing identity are then exported so the combination can be reused
-# elsewhere as a self-consistent capsule.
+# and signing identity public key are then exported so the combination can be
+# reused elsewhere as a self-consistent capsule.
 VALID_ES256_STATEMENT = (
     Path(__file__).parent
     / "test_vectors"
@@ -42,7 +42,7 @@ def test_produce_ccf_profile_receipt_for_capsule(
 ):
     """
     Produce a valid combination of signed statement, transparent statement,
-    receipt and signing identity from the valid-es256 vector payload.
+    receipt and signing identity public key from the valid-es256 vector payload.
     """
     # Reuse the exact payload (and its content type) of the valid-es256 vector,
     # discarding the vector's own signature and protected headers.
@@ -77,19 +77,20 @@ def test_produce_ccf_profile_receipt_for_capsule(
     # exactly the signed statement we submitted.
     assert strip_uhdr(transparent_statement) == signed_statement
 
-    # The signing identity certificate chain, leaf certificate first.
-    signing_identity_pem = "".join(identity.x5c)
+    # The public key of the signing identity, sufficient to verify the
+    # statement's signature without exposing the private key.
+    signing_public_key = crypto.get_cert_public_key(identity.x5c[0])
 
     # The four artifacts must form a valid, self-consistent combination:
     #  - the statement is signed by the exported signing identity, and
     #  - the receipt is a valid transparency proof over that statement.
-    verify_cose_sign1(signed_statement, crypto.get_cert_public_key(identity.x5c[0]))
+    verify_cose_sign1(signed_statement, signing_public_key)
     verify_transparent_statement(transparent_statement, trust_store, signed_statement)
 
     output_dir = _resolve_output_dir(tmp_path)
     (output_dir / "statement.cose").write_bytes(signed_statement)
     (output_dir / "transparent-statement.cose").write_bytes(transparent_statement)
     (output_dir / "receipt.cose").write_bytes(receipt)
-    (output_dir / "signing-identity.pem").write_text(signing_identity_pem)
+    (output_dir / "signing-identity.pub").write_text(signing_public_key)
 
     print(f"Wrote CCF-profile receipt capsule to {output_dir}")
