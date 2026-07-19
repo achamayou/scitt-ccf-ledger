@@ -17,10 +17,10 @@ transparent statement, and the two public keys required to validate them:
 The payload is taken from the ``valid-es256`` scitt-cose test vector and re-signed
 with a throwaway test CA, exactly like the integration tests. The receipt is
 synthesised offline over a single-leaf Merkle tree, so a complete, spec-compliant
-capsule can be produced without a running ledger. The committed capsule lives in
-``test/test_vectors/ccf-profile-capsule`` and is validated by
-``test/test_ccf_profile_capsule.py``. Re-running this generator produces a fresh,
-equally valid capsule with different keys (and therefore different digests).
+capsule can be produced without a running ledger. The committed live-ledger
+capsule is produced by ``test/test_ccf_profile_receipts.py`` and validated by
+``test/test_ccf_profile_capsule.py``. This generator is also exercised there to
+prove that a fresh offline capsule with different keys remains valid.
 """
 
 import argparse

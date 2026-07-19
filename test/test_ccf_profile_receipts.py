@@ -4,16 +4,23 @@
 import os
 from pathlib import Path
 
+import cbor2
+from cryptography.x509 import load_pem_x509_certificate
+
 from pyscitt import crypto
 from pyscitt.cli.validate import strip_uhdr
 from pyscitt.client import Client
-from pyscitt.verify import verify_cose_sign1, verify_transparent_statement
+from pyscitt.verify import (
+    StaticTrustStore,
+    verify_cose_sign1,
+    verify_transparent_statement,
+)
 
 # The payload is lifted from the valid-es256 RFC 9942 test vector's signed
 # statement. We re-sign that exact payload with a locally generated test CA (as
 # the other integration tests do) and register it with the ledger, which yields
 # a CCF-profile receipt. The signed statement, transparent statement, receipt
-# and signing identity public key are then exported so the combination can be
+# and service identity certificate are then exported so the combination can be
 # reused elsewhere as a self-consistent capsule.
 VALID_ES256_STATEMENT = (
     Path(__file__).parent
@@ -36,13 +43,12 @@ def _resolve_output_dir(default: Path) -> Path:
 def test_produce_ccf_profile_receipt_for_capsule(
     client: Client,
     cert_authority,
-    trust_store,
     configure_service,
     tmp_path: Path,
 ):
     """
     Produce a valid combination of signed statement, transparent statement,
-    receipt and signing identity public key from the valid-es256 vector payload.
+    receipt and service identity certificate from the valid-es256 vector payload.
     """
     # Reuse the exact payload (and its content type) of the valid-es256 vector,
     # discarding the vector's own signature and protected headers.
@@ -70,27 +76,37 @@ def test_produce_ccf_profile_receipt_for_capsule(
     transparent_statement = client.submit_signed_statement_and_wait(
         signed_statement
     ).response_bytes
-    receipt = crypto.get_last_embedded_receipt_from_cose(transparent_statement)
-    assert receipt is not None, "ledger did not embed a receipt"
+    encoded_receipt = crypto.get_last_embedded_receipt_from_cose(transparent_statement)
+    assert encoded_receipt is not None, "ledger did not embed a receipt"
+    receipt = cbor2.loads(encoded_receipt)
+    assert isinstance(receipt, bytes)
 
     # Stripping the unprotected header of the transparent statement must recover
     # exactly the signed statement we submitted.
     assert strip_uhdr(transparent_statement) == signed_statement
 
-    # The public key of the signing identity, sufficient to verify the
-    # statement's signature without exposing the private key.
+    # The statement embeds its signing certificate chain. The separately
+    # exported service identity verifies the CCF receipt.
     signing_public_key = crypto.get_cert_public_key(identity.x5c[0])
+    service_identity = client.get_service_certificate()
+    service_public_key = load_pem_x509_certificate(
+        service_identity.encode()
+    ).public_key()
 
     # The four artifacts must form a valid, self-consistent combination:
-    #  - the statement is signed by the exported signing identity, and
-    #  - the receipt is a valid transparency proof over that statement.
+    #  - the statement verifies against its embedded signing identity, and
+    #  - the receipt verifies against the exported service identity.
     verify_cose_sign1(signed_statement, signing_public_key)
-    verify_transparent_statement(transparent_statement, trust_store, signed_statement)
+    verify_transparent_statement(
+        transparent_statement,
+        StaticTrustStore(key=service_public_key),
+        signed_statement,
+    )
 
     output_dir = _resolve_output_dir(tmp_path)
     (output_dir / "statement.cose").write_bytes(signed_statement)
     (output_dir / "transparent-statement.cose").write_bytes(transparent_statement)
     (output_dir / "receipt.cose").write_bytes(receipt)
-    (output_dir / "signing-identity.pub").write_text(signing_public_key)
+    (output_dir / "service-identity.pem").write_text(service_identity)
 
     print(f"Wrote CCF-profile receipt capsule to {output_dir}")
